@@ -45,7 +45,10 @@ jobs:
           export CC=clang
           export LLVM=1
           export LLVM_IAS=1
-          make O=out kangaroox-vili_defconfig
+          # pastikan di root, bukan di out/
+          pwd
+          ls arch/arm64/configs | grep vili
+          make O=out vili_defconfig
           make -j$(nproc) O=out \
               CROSS_COMPILE=aarch64-linux-gnu- \
               CROSS_COMPILE_ARM32=arm-linux-gnueabi- \
