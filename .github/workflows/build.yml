@@ -1,0 +1,57 @@
+name: Kernel Build
+
+on:
+  workflow_dispatch:  # bisa jalan manual
+  push:
+    branches:
+      - main
+      - vili-oss
+      - susfs
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v3
+
+      - name: Install deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            bc bison build-essential ccache curl flex \
+            git libncurses5-dev libssl-dev lzop \
+            python3 python3-pip unzip zip zstd
+
+      - name: Download Clang (AOSP prebuilt)
+        run: |
+          mkdir clang
+          curl -LO https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/master/clang-r450784d.tar.gz
+          tar -C clang -xf clang-r450784d.tar.gz
+
+      - name: Build kernel
+        run: |
+          export PATH=$GITHUB_WORKSPACE/clang/bin:$PATH
+          export ARCH=arm64
+          export SUBARCH=arm64
+          export CC=clang
+          export LLVM=1
+          export LLVM_IAS=1
+
+          cd $GITHUB_WORKSPACE
+          echo "PWD: $(pwd)"
+          echo "Check defconfig..."
+          ls arch/arm64/configs | grep vili || true
+
+          make ARCH=arm64 O=out vili_defconfig
+          make -j$(nproc) O=out \
+            CROSS_COMPILE=aarch64-linux-gnu- \
+            CROSS_COMPILE_ARM32=arm-linux-gnueabi- \
+            CLANG_TRIPLE=aarch64-linux-gnu-
+
+      - name: Upload Image.gz
+        uses: actions/upload-artifact@v3
+        with:
+          name: kernel-build
+          path: out/arch/arm64/boot/Image.gz*
