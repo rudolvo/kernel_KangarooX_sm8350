@@ -51,7 +51,7 @@ jobs:
             CLANG_TRIPLE=aarch64-linux-gnu-
 
       - name: Upload Image.gz
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: kernel-build
           path: out/arch/arm64/boot/Image.gz*
