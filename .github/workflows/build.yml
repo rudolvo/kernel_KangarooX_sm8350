@@ -22,13 +22,12 @@ jobs:
           sudo apt-get install -y bc bison build-essential ccache curl flex \
               gcc clang git libncurses5-dev libssl-dev lld make python3 zlib1g-dev
 
-      - name: Download AOSP Clang
+      - name: Download Android NDK
         run: |
-          mkdir clang
-          cd clang
-          curl -LO https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/master/clang-r450784d.tar.gz
-          tar -xf clang-r450784d.tar.gz
-          cd ..
+          curl -LO https://dl.google.com/android/repository/android-ndk-r28c-linux.zip
+          unzip android-ndk-r28c-linux.zip
+          mv android-ndk-r28c ndk
+
 
       - name: Make output dir
         run: mkdir -p out
