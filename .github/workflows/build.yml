@@ -1,0 +1,61 @@
+name: Kernel Build
+
+on:
+  workflow_dispatch:  # jalan manual
+  push:               # jalan kalau ada push ke repo
+    branches:
+      - susfs
+      - vili-oss
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout kernel source
+        uses: actions/checkout@v4
+
+      - name: Setup build environment
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y bc bison build-essential ccache curl flex \
+              gcc clang git libncurses5-dev libssl-dev lld make python3 zlib1g-dev
+
+      - name: Download AOSP Clang
+        run: |
+          mkdir clang
+          cd clang
+          curl -LO https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/master/clang-r450784d.tar.gz
+          tar -xf clang-r450784d.tar.gz
+          cd ..
+
+      - name: Make output dir
+        run: mkdir -p out
+
+      - name: Build kernel
+        run: |
+          export PATH=$GITHUB_WORKSPACE/clang/bin:$PATH
+          export ARCH=arm64
+          export SUBARCH=arm64
+          export CC=clang
+          export LLVM=1
+          export LLVM_IAS=1
+          make O=out vili_defconfig
+          make -j$(nproc) O=out \
+              CROSS_COMPILE=aarch64-linux-gnu- \
+              CROSS_COMPILE_ARM32=arm-linux-gnueabi- \
+              CLANG_TRIPLE=aarch64-linux-gnu-
+
+      - name: Clone AnyKernel3
+        run: |
+          git clone https://github.com/osm0sis/AnyKernel3.git
+          cp out/arch/arm64/boot/Image.gz AnyKernel3/
+          cd AnyKernel3
+          zip -r9 Kernel-$(date +%Y%m%d).zip * -x .git README.md *placeholder
+
+      - name: Upload Kernel zip
+        uses: actions/upload-artifact@v4
+        with:
+          name: Kernel-Zip
+          path: AnyKernel3/*.zip
