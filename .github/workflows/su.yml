@@ -1,0 +1,65 @@
+name: Kernel Build with SukiSU + SUSFS
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - susfs
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout kernel source
+        uses: actions/checkout@v4
+
+      - name: Setup build environment
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y bc bison build-essential ccache curl flex \
+              gcc clang git libncurses5-dev libssl-dev lld make python3 zlib1g-dev unzip
+
+      - name: Download Android NDK r28c
+        run: |
+          curl -LO https://dl.google.com/android/repository/android-ndk-r28c-linux.zip
+          unzip android-ndk-r28c-linux.zip
+          mv android-ndk-r28c ndk
+
+      - name: Apply SukiSU patch
+        run: |
+          curl -LSs "https://raw.githubusercontent.com/SukiSU-Ultra/SukiSU-Ultra/main/kernel/setup.sh" | bash -s nongki
+
+      - name: Apply SUSFS patch
+        run: |
+          curl -LSs "https://raw.githubusercontent.com/SukiSU-Ultra/SukiSU-Ultra/main/kernel/setup.sh" | bash -s susfs-main
+
+      - name: Make output dir
+        run: mkdir -p out
+
+      - name: Build kernel
+        run: |
+          export PATH=$GITHUB_WORKSPACE/ndk/toolchains/llvm/prebuilt/linux-x86_64/bin:$PATH
+          export ARCH=arm64
+          export SUBARCH=arm64
+          export CC=clang
+          export LLVM=1
+          export LLVM_IAS=1
+          make O=out kangaroox-vili_defconfig
+          make -j$(nproc) O=out \
+              CROSS_COMPILE=aarch64-linux-gnu- \
+              CROSS_COMPILE_ARM32=arm-linux-gnueabi- \
+              CLANG_TRIPLE=aarch64-linux-gnu-
+
+      - name: Clone AnyKernel3
+        run: |
+          git clone https://github.com/osm0sis/AnyKernel3.git
+          cp out/arch/arm64/boot/Image.gz AnyKernel3/
+          cd AnyKernel3
+          zip -r9 Kernel-SukiSU-SUSFS-$(date +%Y%m%d).zip * -x .git README.md *placeholder
+
+      - name: Upload Kernel zip
+        uses: actions/upload-artifact@v4
+        with:
+          name: Kernel-Zip
+          path: AnyKernel3/*.zip
