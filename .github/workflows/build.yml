@@ -1,4 +1,4 @@
-name: Kernel Build tes1
+name: Kernel Build tes2
 on:
   workflow_dispatch:
 
@@ -40,6 +40,7 @@ jobs:
 
       - name: Build kernel
         run: |
+          set -eo pipefail
           export PATH=$GITHUB_WORKSPACE/clang/bin:$PATH
           export ARGS="ARCH=arm64 O=out LLVM=1 LLVM_IAS=1 CROSS_COMPILE=aarch64-linux-gnu- CROSS_COMPILE_ARM32=arm-linux-gnueabi- CROSS_COMPILE_COMPAT=arm-linux-gnueabi-"
           ls arch/arm64/configs | grep vili || true
@@ -51,6 +52,7 @@ jobs:
 
       - name: Package (AnyKernel3)
         run: |
+          ls -la out/arch/arm64/boot/ || true
           git clone --depth=1 https://github.com/osm0sis/AnyKernel3
           cp out/arch/arm64/boot/Image.gz AnyKernel3/
           cd AnyKernel3 && zip -r9 ../kernel.zip . -x ".git*"
