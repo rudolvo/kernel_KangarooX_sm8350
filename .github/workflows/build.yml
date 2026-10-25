@@ -1,64 +1,64 @@
-name: Kernel Build
-
+name: Kernel Build tes1
 on:
-  workflow_dispatch:  # bisa jalan manual
-  push:
-    branches:
-      - main
-      - vili-oss
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-22.04
-
     steps:
-      - name: Checkout source
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+
+      - name: Free disk space
+        run: sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/lib/android
 
       - name: Install deps
         run: |
           sudo apt-get update
-          sudo apt-get install -y \
-            bc bison build-essential ccache curl flex \
-            git libncurses5-dev libssl-dev lzop \
-            python3 python3-pip unzip zip zstd
+          sudo apt-get install -y bc bison build-essential ccache curl flex git \
+            libncurses5-dev libssl-dev lzop python3 unzip zip zstd \
+            gcc-aarch64-linux-gnu gcc-arm-linux-gnueabi
+
+      - name: Remove old KernelSU (if any)
+        run: |
+          git rm -f --cached KernelSU || true
+          rm -rf KernelSU drivers/kernelsu
+          sed -i '/kernelsu/d' drivers/Makefile drivers/Kconfig
+          echo "Sisa hook lama (kalau ada):"
+          grep -rn "ksu_handle" fs kernel || echo "tidak ada"
 
       - name: Add KernelSU Next (legacy)
-        run: curl -LSs "https://raw.githubusercontent.com/KernelSU-Next/KernelSU-Next/next/kernel/setup.sh" | bash -s legacy
-
-      - name: Download Clang
         run: |
-          mkdir clang
-          curl -fLO https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/master/clang-r450784d.tar.gz
-          tar -C clang -xf clang-r450784d.tar.gz
+          curl -LSs "https://raw.githubusercontent.com/KernelSU-Next/KernelSU-Next/next/kernel/setup.sh" | bash -s legacy
+          echo "Branch KernelSU Next yang kepakai:"
+          git -C KernelSU-Next rev-parse --abbrev-ref HEAD
+          git -C KernelSU-Next log -1 --oneline
+
+      - name: Download Clang (Proton)
+        run: |
+          git clone --depth=1 https://github.com/kdrag0n/proton-clang clang
           clang/bin/clang --version
-          
+
       - name: Build kernel
         run: |
           export PATH=$GITHUB_WORKSPACE/clang/bin:$PATH
-          export ARCH=arm64
-          export SUBARCH=arm64
-          export CC=clang
-          export LLVM=1
-          export LLVM_IAS=1
-
-          cd $GITHUB_WORKSPACE
-          echo "PWD: $(pwd)"
-          echo "Check defconfig..."
+          export ARGS="ARCH=arm64 O=out LLVM=1 LLVM_IAS=1 CROSS_COMPILE=aarch64-linux-gnu- CROSS_COMPILE_ARM32=arm-linux-gnueabi- CROSS_COMPILE_COMPAT=arm-linux-gnueabi-"
           ls arch/arm64/configs | grep vili || true
-          
+          make $ARGS vili_defconfig
           scripts/config --file out/.config -e KPROBES -e KPROBE_EVENTS -e KSU -e KSU_KPROBE_HOOKS
           make $ARGS olddefconfig
           grep -E "CONFIG_KSU|CONFIG_KPROBES" out/.config
-          
-          make ARCH=arm64 O=out vili_defconfig
-          make -j$(nproc) O=out \
-            CROSS_COMPILE=aarch64-linux-gnu- \
-            CROSS_COMPILE_ARM32=arm-linux-gnueabi- \
-            CLANG_TRIPLE=aarch64-linux-gnu-
+          make -j$(nproc) $ARGS 2>&1 | tee build.log
 
-      - name: Upload Image.gz
-        uses: actions/upload-artifact@v4
+      - name: Package (AnyKernel3)
+        run: |
+          git clone --depth=1 https://github.com/osm0sis/AnyKernel3
+          cp out/arch/arm64/boot/Image.gz AnyKernel3/
+          cd AnyKernel3 && zip -r9 ../kernel.zip . -x ".git*"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: kernel-build
-          path: out/arch/arm64/boot/Image.gz*
+          path: |
+            kernel.zip
+            build.log
