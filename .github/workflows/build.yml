@@ -45,7 +45,11 @@ jobs:
           echo "PWD: $(pwd)"
           echo "Check defconfig..."
           ls arch/arm64/configs | grep vili || true
-
+          
+          scripts/config --file out/.config -e KPROBES -e KPROBE_EVENTS -e KSU -e KSU_KPROBE_HOOKS
+          make $ARGS olddefconfig
+          grep -E "CONFIG_KSU|CONFIG_KPROBES" out/.config
+          
           make ARCH=arm64 O=out vili_defconfig
           make -j$(nproc) O=out \
             CROSS_COMPILE=aarch64-linux-gnu- \
