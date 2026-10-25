@@ -2,7 +2,7 @@
 # Automatically generated file; DO NOT EDIT.
 # Linux/arm64 5.4.233 Kernel Configuration
 #
-CONFIG_CC_VERSION_TEXT="WeebX clang version 17.0.0 (https://github.com/llvm/llvm-project d604c57164ecdb3084c8d00f9575158fddc30f81)"
+CONFIG_CC_VERSION_TEXT="ZyC clang version 19.0.0git (https://github.com/llvm/llvm-project f8262cae69a616b98774d4c669e11246fe3a9a05)"
 CONFIG_GCC_VERSION=0
 CONFIG_CC_IS_CLANG=y
 CONFIG_LD_IS_LLD=y
