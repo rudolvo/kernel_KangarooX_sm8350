@@ -26,12 +26,13 @@ jobs:
       - name: Add KernelSU Next (legacy)
         run: curl -LSs "https://raw.githubusercontent.com/KernelSU-Next/KernelSU-Next/next/kernel/setup.sh" | bash -s legacy
 
-      - name: Download Clang (AOSP prebuilt)
+      - name: Download Clang
         run: |
           mkdir clang
-          curl -LO https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/master/clang-r450784d.tar.gz
+          curl -fLO https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/master/clang-r450784d.tar.gz
           tar -C clang -xf clang-r450784d.tar.gz
-
+          clang/bin/clang --version
+          
       - name: Build kernel
         run: |
           export PATH=$GITHUB_WORKSPACE/clang/bin:$PATH
